@@ -64,7 +64,8 @@ describe("CustomerPopup", () => {
     });
     
     it("renders the customer message", () => {
-      expect(getPopupMessage()).toBe(i18n.t("customerList.modal.customerMessage"));
+      expect(getPopupMessage())
+        .toBe(i18n.t("customerList.modal.customerMessage"));
     });
 
   });
@@ -76,7 +77,8 @@ describe("CustomerPopup", () => {
     });
 
     it("renders the no customer message ", () => {
-      expect(getPopupMessage()).toBe(i18n.t("customerList.modal.noCustomerMessage"));
+      expect(getPopupMessage())
+        .toBe(i18n.t("customerList.modal.noCustomerMessage"));
     });
 
   });
@@ -98,7 +100,8 @@ describe("when there is a customer", () => {
   });
 
   it("renders the customer message", () => {
-    expect(getPopupMessage()).toBe(i18n.t("customerList.modal.customerMessage"));
+    expect(getPopupMessage())
+      .toBe(i18n.t("customerList.modal.customerMessage"));
   });
   
   describe("and the customer is a corporate customer", () => {
@@ -107,7 +110,8 @@ describe("when there is a customer", () => {
     });
 
     it("renders the corporate customer message", () => {
-      expect(getPopupMessage()).toBe(i18n.t("customerList.modal.corporateMessage"));
+      expect(getPopupMessage())
+        .toBe(i18n.t("customerList.modal.corporateMessage"));
     });
   });
 
@@ -182,7 +186,7 @@ describe("OneClickButton", () => {
     wrapper.prop("onClick")();
     expect(shallowRender().prop("disabled")).toBe(true);
   });
-  
+
 });
 ```
 
@@ -291,7 +295,10 @@ describe("OpenCustomerListButton", () => {
   });
 
   const shallowOptions = { context: { store: mockStore } };
-  const shallowRender = () => shallow(<OpenCustomerListButton {...props} />, shallowOptions);
+  const shallowRender = () => shallow(
+    <OpenCustomerListButton {...props} />,
+    shallowOptions
+  );
 
   it("opens the customer list when clicked", () => {
     shallowRender().prop("onClick")();
@@ -363,7 +370,10 @@ describe("CustomerGreeting", () => {
   });
 
   const shallowOptions = { context: { store: mockStore } };
-  const shallowRender = () => shallow(<CustomerGreeting {...props} />, shallowOptions);
+  const shallowRender = () => shallow(
+    <CustomerGreeting {...props} />,
+    shallowOptions
+  );
 
   it("should display a greeting with the customer name", () => {
     expect(shallowRender().text()).toBe(`Hello ${getCustomerName(null)}!`);
