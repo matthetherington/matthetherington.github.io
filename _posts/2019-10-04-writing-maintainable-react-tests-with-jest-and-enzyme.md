@@ -366,6 +366,6 @@ describe("CustomerGreeting", () => {
 
 ## Conclusion
 
-The key to writing good unit tests is to give careful consideration to what in your application might change in future, and whether or not these changes might require a change in your test. By being defensive with your test code, you can largely insulate it from changes elsewhere in the application and keep your tests maintainable.
+We should treat our test code just the same as we would treat our production code, giving careful consideration to what in your application might change in future and whether or not these changes might require a change in your test. By being defensive with your test code, you can largely insulate it from changes elsewhere in the application and keep your tests maintainable.
 
 I hope this was helpful and I'd really appreciate any suggestions or feedback that you might have so please drop me an email at the address below with your comments.
