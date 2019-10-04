@@ -38,6 +38,13 @@ kramdown:
   input: GFM
   syntax_highlighter: rouge
 
+defaults:
+  - scope:
+      path: "assets/img"
+    values:
+      image: true
+
+google_analytics: UA-58906383-1
 
 # Exclude from processing.
 # The following items will not be processed, by default.
