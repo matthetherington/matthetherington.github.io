@@ -27,7 +27,7 @@ url: "https://matthetherington.github.io" # the base hostname & protocol for you
 github_username:  matthetherington
 
 # Build settings
-theme: minima
+theme: jekyll-theme-cayman
 plugins:
   - jekyll-feed
 
