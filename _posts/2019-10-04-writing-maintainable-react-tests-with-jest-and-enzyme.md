@@ -32,7 +32,8 @@ describe("CustomerPopup", () => {
 
   it("should render the correct message when there is no customer", () => {
     const wrapper = shallow(<CustomerPopup customer={null} />);
-    expect(wrapper.find(Popup).prop("message")).toBe(i18n.t("customerList.modal.noCustomerMessage"));
+    expect(wrapper.find(Popup).prop("message"))
+      .toBe(i18n.t("customerList.modal.noCustomerMessage"));
   });
   
   //lots more tests here...
@@ -130,19 +131,24 @@ class OneClickButton extends React.Component {
 
   handleClick = () => {
     this.setState({
-    clicked: true,
+      clicked: true,
     }, this.props.onClick);
   };
 
   render() {
-    return <button onClick={this.handleClick} disabled={this.state.clicked}>{this.props.children}</button>
+    return (
+      <button
+        onClick={this.handleClick}
+        disabled={this.state.clicked}
+      >{this.props.children}</button>
+    );
   };
 }
 ```
 
 The kind of testing that we want to avoid would look something like this:
 
-```
+```jsx
 describe("OneClickButton", () => {
 
   it("sets clicked to false when handleClick is called", () => {
@@ -160,7 +166,7 @@ In addition, a component's internal state is just that - internal. There sho
 
 So, bearing the above in mind, we can rewrite our test so that the behavior is tested instead:
 
-```
+```jsx
 describe("OneClickButton", () => {
   let props;
   
@@ -175,7 +181,8 @@ describe("OneClickButton", () => {
   it("disables itself when clicked", () => {
     wrapper.prop("onClick")();
     expect(shallowRender().prop("disabled")).toBe(true);
-    });
+  });
+  
 });
 ```
 
