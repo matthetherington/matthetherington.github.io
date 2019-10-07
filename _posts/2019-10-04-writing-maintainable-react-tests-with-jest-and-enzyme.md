@@ -3,7 +3,7 @@ layout: post
 title:  "Writing Maintainable React Tests with Jest & Enzyme"
 ---
 
-When looking for approaches to testing  React components, you will find a multitude of different approaches each with their own merits and drawbacks. I'm not sure whether a single, correct approach even exists but after writing a great many of these tests I've stumbled across a few helpful ideas that, when put into practice, will make your tests an asset rather than a nuisance.
+When looking for approaches to testing React components, you will find a multitude - each with their own merits and drawbacks. I'm not sure whether a single, correct approach even exists but after writing a great many of these tests I've stumbled across a few helpful ideas that, when put into practice, will make your tests an asset rather than a nuisance.
 
 As your application code grows, your test code will grow accordingly (hopefully anyway!) and often you'll have as much or more test code than application code. The sheer volume of this code makes keeping it maintainable a necessity.
 
@@ -13,11 +13,12 @@ There's nothing worse than making a small, couple-line change to a component onl
 
 So how do we avoid situations like this? In no particular order:
 
-## Dont repeat yourself
+## Don't repeat yourself
 
-Ideally, your couple-line change to the application code should only result in a couple-line change to the tests. This becomes much harder to achieve when there is duplication in tests, as when a change is required to the duplicated code, you will have N changes to make instead of 1. Sometimes the duplication can be overt, and other times it is more subtle.
+Ideally, your couple-line change to the application code should only result in a couple-line change to the tests. This becomes much harder to achieve when there is duplication in the tests. In this situation, when a change is required to the duplicated code, you will have N changes to make instead of 1. Sometimes the duplication can be overt, and other times it is more subtle.
 
 Consider the following test suite:
+
 ```jsx
 describe("CustomerPopup", () => {
   it("renders the correct message when there is a customer", () => {
@@ -122,7 +123,7 @@ describe("when there is a customer", () => {
 
 Our tests should give us a high degree of confidence that a particular component is behaving correctly, and **only** that it is behaving correctly. If something behaves properly then it is of no consequence exactly how it is implemented.
 
-Well-written tests should allow us to refactor a component when needed without changing any of the tests. If the test code is identical to before and it still passes then we can be confident that we haven't introduced any bugs. Any time we have to make a change to the test code while we are refactoring, we introduce the possibility of error.
+A well-written test should allow us to refactor a component without having to change the test code. If the test code is identical to before and it still passes then we can be confident that we haven't introduced any new bugs. Any time we have to make a change to the test code while we are refactoring, we introduce the possibility of error.
 
 Lets say we have the following button component which when clicked will disable itself:
 
@@ -324,7 +325,7 @@ Imagine if you had a selector that is used by multiple different components, and
 
 If there was a change in the shape of the state returned by the selector then you would have to find every place that it is mocked and update the mock implementation.
 
-To avoid this problem, jest provides us with the ability to write a mock implementation for a module in an adjacent __mocks__ folder, and when a call to jest.mock("./path/to/module") is made, this implementation will be used.
+To avoid this problem, jest provides us with the ability to write a mock implementation for a module in an adjacent __mocks__ folder, and when a call to `jest.mock("./path/to/module")` is made, this implementation will be used.
 
 For example:
 
