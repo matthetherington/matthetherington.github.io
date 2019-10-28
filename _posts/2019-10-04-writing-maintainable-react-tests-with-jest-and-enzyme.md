@@ -22,19 +22,19 @@ Consider the following test suite:
 ```jsx
 describe("CustomerPopup", () => {
   it("renders the correct message when there is a customer", () => {
-    const fakeCustomer = { id: "foo" };
+    const fakeCustomer = { id: "foo", name: "Matt" };
     const wrapper = shallow(
       <CustomerPopup customer={fakeCustomer} />
     );
 
     expect(wrapper.find(Popup).prop("message"))
-      .toBe(i18n.t("customerList.modal.customerPopupMessage"));
+      .toBe(`Hello ${props.customer.name}`);
   });
 
   it("should render the correct message when there is no customer", () => {
     const wrapper = shallow(<CustomerPopup customer={null} />);
     expect(wrapper.find(Popup).prop("message"))
-      .toBe(i18n.t("customerList.modal.noCustomerMessage"));
+      .toBe("Hello");
   });
   
   //lots more tests here...
@@ -61,12 +61,12 @@ describe("CustomerPopup", () => {
   describe("when there is a customer", () => {
 
     beforeEach(() => {
-      props.customer = { id: "foo" };
+      props.customer = { id: "foo", name: "Matt" };
     });
     
-    it("renders the customer message", () => {
+    it("renders the greeting", () => {
       expect(getPopupMessage())
-        .toBe(i18n.t("customerList.modal.customerMessage"));
+        .toBe(`Hello ${props.customer.name}`);
     });
 
   });
@@ -77,9 +77,9 @@ describe("CustomerPopup", () => {
       props.customer = null;
     });
 
-    it("renders the no customer message ", () => {
+    it("renders a default greeting ", () => {
       expect(getPopupMessage())
-        .toBe(i18n.t("customerList.modal.noCustomerMessage"));
+        .toBe("Hello");
     });
 
   });
@@ -97,22 +97,23 @@ For example, we might want to show a different message if the customer is a corp
 describe("when there is a customer", () => {
 
   beforeEach(() => {
-    props.customer = { id: "foo" };
+    props.customer = { id: "foo", name: "Bar" };
   });
 
   it("renders the customer message", () => {
     expect(getPopupMessage())
-      .toBe(i18n.t("customerList.modal.customerMessage"));
+      .toBe(`Hello ${props.customer.name}`);
   });
   
   describe("and the customer is a corporate customer", () => {
     beforeEach(() => {
       props.customer.customerType = "corporate";
+      props.customer.tradingName = "Foo Corp Ltd";
     });
 
-    it("renders the corporate customer message", () => {
+    it("renders the corporate greeting", () => {
       expect(getPopupMessage())
-        .toBe(i18n.t("customerList.modal.corporateMessage"));
+        .toBe(`Hello ${props.customer.name} from ${props.customer.tradingName}`);
     });
   });
 
