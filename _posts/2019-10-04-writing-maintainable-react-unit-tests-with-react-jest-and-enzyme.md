@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Writing Maintainable React Tests with Jest & Enzyme"
+title:  "Writing Maintainable Unit Tests with React, Jest & Enzyme"
 ---
 
 When looking for approaches to testing React components, you will find a multitude - each with their own merits and drawbacks. I'm not sure whether a single, correct approach even exists but after writing a great many of these tests I've stumbled across a few helpful ideas that, when put into practice, will make your tests an asset rather than a nuisance.
