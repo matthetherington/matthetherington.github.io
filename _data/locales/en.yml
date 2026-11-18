@@ -1,0 +1,8 @@
+# Override only these labels; Jekyll deep-merges the rest from the theme.
+# Do not automatically license original blog prose under Chirpy's default CC-BY.
+# The downloadable script retains its explicit GPL license.
+copyright:
+  brief: All rights reserved.
+  verbose: Original prose is reserved unless otherwise stated. Downloads retain their stated licenses.
+  license:
+    template: ""

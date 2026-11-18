@@ -1,0 +1,23 @@
+<!-- Run after Chirpy's theme initialization, before the page body is painted. -->
+<script id="default-theme">
+  (() => {
+    try {
+      const initializedKey = "matthetherington.github.io:theme-initialized";
+
+      if (localStorage.getItem(initializedKey) !== null) {
+        return;
+      }
+
+      /* Preserve a saved Light/Dark choice; otherwise start in Dark. */
+      if (localStorage.getItem("theme") === null) {
+        Theme.update(Theme.Mode.DARK);
+      }
+
+      /* Chirpy clears its theme key for System. Remember initialization
+         separately so that an explicit System choice survives navigation. */
+      localStorage.setItem(initializedKey, "1");
+    } catch {
+      /* Browser privacy settings can make localStorage unavailable. */
+    }
+  })();
+</script>

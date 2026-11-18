@@ -1,0 +1,4 @@
+magicmouse:
+  filename: build-magicmouse-palm.py
+  sha256: "16d2894199817149d73fe17108def3b2b071af0e8f7c043a4bcb39e4c508729c"
+  patch_commit: d4f767712c8b0097e0996f951d3c9cea2648ee97

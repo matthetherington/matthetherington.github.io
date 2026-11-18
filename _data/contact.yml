@@ -1,0 +1,10 @@
+- type: github
+  icon: fab fa-github
+
+- type: gists
+  icon: fas fa-code
+  url: https://gist.github.com/matthetherington
+
+- type: rss
+  icon: fas fa-rss
+  noblank: true
