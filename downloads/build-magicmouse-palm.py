@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Build only: a separately named palm/hover-patched driver for running Fedora Asahi.
+"""Build a separately named palm/hover-patched driver for running Fedora Asahi.
 
-Never installs packages, loads/unloads drivers, writes sysfs, or changes boot files.
-Run --help or --check first. See the adjacent README for prerequisites/limitations.
+Build and preflight never change the running driver or boot files. The separate
+root-only --install action enables an opt-in service for the next matching boot.
 """
 
 import argparse
@@ -17,9 +17,11 @@ from pathlib import Path, PurePosixPath
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
+import time
 import urllib.error
 import urllib.request
 
@@ -32,6 +34,10 @@ MODULE_VERSION = "d4f767712c-portable1"
 DRIVER_SUFFIX = "/drivers/hid/hid-magicmouse.c"
 PACKAGE_FORMAT = "%{NAME}\\n%{VERSION}\\n%{RELEASE}\\n%{ARCH}\\n%{SOURCERPM}\\n%{VENDOR}\\n%{SIGPGP:pgpsig}\\n%{SOURCEPACKAGE}\\n"
 TOOLS = ("rpm", "rpm2cpio", "cpio", "git", "make", "gcc", "ld", "nm", "readelf", "modinfo", "bwrap")
+SERVICE = "magicmouse-palm.service"
+STATE = Path("/etc/magicmouse-palm")
+UNIT = Path("/etc/systemd/system") / SERVICE
+MAX_MODULE_SIZE = 64 * 1024 * 1024
 
 
 class Refused(RuntimeError):
@@ -396,8 +402,8 @@ def verify_module(commands, module, headers, release):
         fields.setdefault(key, []).append(value.strip())
     require(fields.get("name") == [MODULE], "Wrong compiled module identity")
     require(fields.get("version") == [MODULE_VERSION], "Wrong compiled module version")
-    require(fields.get("vermagic", [""])[0].split()[0] == release, "Module targets a different kernel")
-    require("alias" not in fields, "Manual-only module unexpectedly has autoload aliases")
+    require(fields.get("vermagic", [""])[0].split()[:1] == [release], "Module targets a different kernel")
+    require("alias" not in fields, "Module unexpectedly has autoload aliases")
     header = commands.run(["readelf", "-h", module]).stdout
     require("AArch64" in header and "REL (Relocatable file)" in header, "Not an AArch64 kernel module")
     exported = {line.split()[1] for line in (headers / "Module.symvers").read_text().splitlines() if line.strip()}
@@ -489,7 +495,7 @@ def build(args, commands):
     }
     (work / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     (work / "dist/SHA256SUMS").write_text(f"{artifact['sha256']}  {module.name}\n")
-    (work / "DO-NOT-INSTALL.txt").write_text(
+    (work / "DRIVER-NOTES.txt").write_text(
         "Built only. This is NOT a new kernel image or an installed driver.\n"
         "The existing driver binding was not changed. No persistent changes were made.\n"
         "Do not use force-loading, blacklist the original driver, or unbind a parent SPI device.\n"
@@ -497,26 +503,224 @@ def build(args, commands):
         "is explicitly supplied at manual load time. The exact-instance guard and HID type\n"
         "check prevent it from claiming the keyboard, even where numeric IDs are shared.\n"
         f"Built for: {release}\nSelected trackpad during build: {device['instance']}\n"
-        "Loading and rebinding require a separate reviewed, reversible trial procedure.\n"
+        "Use a reviewed, reversible trial before opting into --install for future boots.\n"
         "Do not copy a loader hardcoded for somebody else's kernel/device/version.\n"
         "It is unsigned/out-of-tree, may add kernel taint and can crash/hang the system.\n"
         "Kernel taint persists until reboot even after a driver rollback.\n"
     )
     print(f"\nSUCCESS: {module}\nSHA-256: {artifact['sha256']}\n"
-          f"Details and warnings: {work / 'result.json'} and {work / 'DO-NOT-INSTALL.txt'}\n"
+          f"Details and warnings: {work / 'result.json'} and {work / 'DRIVER-NOTES.txt'}\n"
           "Nothing was installed, loaded, rebound or made persistent.")
+
+
+def module_dir(release):
+    require(isinstance(release, str) and re.fullmatch(r"[0-9][A-Za-z0-9_.+~-]+", release),
+            "Unexpected kernel release string")
+    return Path("/usr/lib/modules") / release / "extra" / "magicmouse-palm"
+
+
+def read_build_file(path, limit):
+    # Don't follow a final symlink or block on a FIFO from a user-owned build.
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as stream:
+        require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), f"Expected a regular file: {path}")
+        data = stream.read(limit + 1)
+    require(len(data) <= limit, f"Build file is too large: {path}")
+    return data
+
+
+def device_identity(device):
+    # The numeric HID instance suffix is assigned anew each boot.
+    return {key: device[key] for key in ("hid_id", "name")}
+
+
+def service_text():
+    return f"""[Unit]
+Description=Use the locally patched Apple internal trackpad driver
+After=systemd-udev-trigger.service
+Before=display-manager.service
+ConditionKernelCommandLine=!systemd.mask={SERVICE}
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 -I {STATE}/driver.py --boot-apply
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+def install(build_dir, commands):
+    require(os.geteuid() == 0, "--install needs sudo; use only a script and build you trust")
+    require(Path("/run/systemd/system").is_dir(), "Installation requires a running systemd host")
+    uname = os.uname()
+    require(uname.machine == "aarch64" and ".asahi." in uname.release,
+            "Installation requires a running Fedora Asahi kernel")
+    release = uname.release
+    directory = module_dir(release)
+    module = directory / (MODULE + ".ko")
+    for path in (STATE, UNIT, directory):
+        require(not os.path.lexists(path), f"{path} already exists; uninstall before installing again")
+
+    result = json.loads(read_build_file(build_dir / "result.json", 64 * 1024))
+    require(result.get("built") is True and result.get("status") == "built-not-loaded" and
+            result.get("patch_commit") == COMMIT and result.get("running_kernel") == release,
+            "Expected a successful build of this patch for the running kernel")
+    device = device_identity(select_device())
+    require(device == device_identity(result["device"]),
+            "The build does not target this machine's selected trackpad")
+    data = read_build_file(build_dir / "dist" / module.name, MAX_MODULE_SIZE)
+    require(hashlib.sha256(data).hexdigest() == result.get("sha256"), "Build module checksum mismatch")
+
+    # Verify the root-owned copy, not a path that the build user can replace.
+    created_dir = created_unit = enable_attempted = False
+    STATE.mkdir(mode=0o755)
+    try:
+        directory.parent.mkdir(exist_ok=True)
+        directory.mkdir(mode=0o755)
+        created_dir = True
+        module.write_bytes(data)
+        verified = verify_module(commands, module, directory.parent.parent / "build", release)
+        config = {"kernel": release, "device": device, "sha256": verified["sha256"]}
+        (STATE / "config.json").write_text(json.dumps(config) + "\n")
+        shutil.copyfile(Path(__file__), STATE / "driver.py")
+        with UNIT.open("x") as stream:
+            created_unit = True
+            stream.write(service_text())
+        if shutil.which("restorecon"):
+            commands.run(["restorecon", "-R", directory, STATE, UNIT])
+        commands.run(["systemctl", "daemon-reload"])
+        enable_attempted = True
+        commands.run(["systemctl", "enable", SERVICE])
+    except BaseException:
+        if enable_attempted:
+            commands.run(["systemctl", "disable", SERVICE], check=False)
+        if created_unit:
+            UNIT.unlink()
+            commands.run(["systemctl", "daemon-reload"], check=False)
+        if created_dir:
+            shutil.rmtree(directory)
+        shutil.rmtree(STATE)
+        raise
+    print(f"Enabled {SERVICE} for kernel {release}. The running driver was not changed.")
+    print(f"To skip the service for one boot, add systemd.mask={SERVICE} to the kernel command line.")
+
+
+def uninstall(commands):
+    require(os.geteuid() == 0, "--uninstall needs sudo")
+    require(UNIT.is_file() and (STATE / "config.json").is_file(), "No complete installation found")
+    directory = module_dir(json.loads((STATE / "config.json").read_text())["kernel"])
+    commands.run(["systemctl", "disable", SERVICE])
+    UNIT.unlink()
+    commands.run(["systemctl", "daemon-reload"])
+    if directory.exists():
+        (directory / (MODULE + ".ko")).unlink(missing_ok=True)
+        directory.rmdir()
+    (STATE / "config.json").unlink()
+    (STATE / "driver.py").unlink()
+    STATE.rmdir()
+    print("Removed the boot service. Reboot to return to the stock driver.")
+
+
+def bound_to(device, driver):
+    link = device / "driver"
+    return link.is_symlink() and link.resolve() == driver
+
+
+def sysfs_action(driver, action, instance):
+    (driver / action).write_text(instance + "\n")
+
+
+def switch_trackpad(commands, sysroot, device, module):
+    drivers = sysroot / "bus/hid/drivers"
+    stock, patched = drivers / "magicmouse", drivers / DRIVER
+    instance = device.name
+    require(re.fullmatch(r"[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}\.[0-9A-Fa-f]+", instance),
+            "Unexpected HID instance name")
+    require(bound_to(device, stock), "Trackpad is no longer bound to the stock driver")
+    # Load before releasing the stock driver: signature/ABI failures leave it alone.
+    commands.run(["insmod", module, f"target_hid={instance}"], timeout=30)
+    try:
+        require(bound_to(device, stock), "Trackpad binding changed while loading the module")
+        sysfs_action(stock, "unbind", instance)
+        if not bound_to(device, patched):
+            sysfs_action(patched, "bind", instance)
+        require(bound_to(device, patched), "Patched driver did not claim the trackpad")
+    except BaseException:
+        try:
+            if bound_to(device, patched):
+                sysfs_action(patched, "unbind", instance)
+            if not (device / "driver").is_symlink():
+                sysfs_action(stock, "bind", instance)
+            require(bound_to(device, stock), "Stock driver did not reclaim the trackpad")
+        except (OSError, Refused) as error:
+            raise Refused(f"Could not restore stock binding: {error}. "
+                          f"Reboot with systemd.mask={SERVICE}.") from error
+        commands.run(["rmmod", MODULE], check=False, timeout=15)
+        raise
+    print(f"Patched driver bound to {instance}")
+
+
+def boot_apply(commands, sysroot=Path("/sys")):
+    require(os.geteuid() == 0, "The boot service must run as root")
+    config = json.loads((STATE / "config.json").read_text())
+    release = os.uname().release
+    if config["kernel"] != release:
+        print(f"Skipping: installed module is for {config['kernel']}, not {release}")
+        return
+    module = module_dir(release) / (MODULE + ".ko")
+    require(sha256(module) == config["sha256"], "Installed module checksum mismatch")
+    devices = sysroot / "bus/hid/devices"
+    stock = sysroot / "bus/hid/drivers/magicmouse"
+    deadline = time.monotonic() + 10
+    while True:
+        matches = []
+        for device in devices.iterdir() if devices.is_dir() else ():
+            try:
+                if bound_to(device, stock):
+                    props = properties(device / "uevent")
+                    if {"hid_id": props.get("HID_ID"), "name": props.get("HID_NAME", "")} == config["device"]:
+                        matches.append(device)
+            except FileNotFoundError:
+                continue
+        require(len(matches) <= 1, "Ambiguous internal trackpad match; leaving the stock driver in place")
+        if matches:
+            switch_trackpad(commands, sysroot, matches[0], module)
+            return
+        if time.monotonic() >= deadline:
+            print("Skipping: matching stock-bound trackpad was not found")
+            return
+        time.sleep(0.25)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="read-only preflight only; no download/build")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--check", action="store_true", help="read-only preflight only; no download/build")
+    actions.add_argument("--install", type=Path, metavar="BUILD_DIR", help="enable the built driver at boot (sudo)")
+    actions.add_argument("--uninstall", action="store_true", help="remove the boot installation (sudo)")
+    actions.add_argument("--boot-apply", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--output", help="new output directory (no whitespace; never overwrite an existing directory)")
     parser.add_argument("--source-rpm", help="optional matching signed kernel source RPM")
     parser.add_argument("--debugsource-rpm", help="optional matching signed debug-source RPM")
     parser.add_argument("--patch-file", help="optional cached patch; still checked against the pinned SHA-256")
     parser.add_argument("--device", help="exact internal HID instance; default: discover the one bound to magicmouse")
-    parser.add_argument("--jobs", type=int, default=2, help="compile jobs, default 2")
+    parser.add_argument("--jobs", type=int, help="compile jobs, default 2")
     args = parser.parse_args(argv)
+    if args.install or args.uninstall or args.boot_apply:
+        if any(value is not None for value in
+               (args.output, args.source_rpm, args.debugsource_rpm, args.patch_file, args.device, args.jobs)):
+            parser.error("build options are not valid with install, uninstall or boot actions")
+        commands = Commands()
+        if args.install:
+            install(args.install, commands)
+        elif args.uninstall:
+            uninstall(commands)
+        else:
+            boot_apply(commands)
+        return
+    if args.jobs is None:
+        args.jobs = 2
     require(1 <= args.jobs <= 64, "--jobs must be between 1 and 64")
     build(args, Commands())
 
@@ -524,7 +728,6 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         main()
-    except (Refused, OSError, ValueError, tarfile.TarError, subprocess.SubprocessError) as error:
+    except (Refused, OSError, ValueError, KeyError, TypeError, tarfile.TarError, subprocess.SubprocessError) as error:
         print(f"\nSTOPPED: {error}", file=sys.stderr)
-        print("No installation or driver activation was attempted.", file=sys.stderr)
         raise SystemExit(1)

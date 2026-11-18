@@ -114,6 +114,8 @@ def check_site(site):
         "python3 build-magicmouse-palm.py --check",
         "python3 build-magicmouse-palm.py --output ./build",
         "sha256sum --check SHA256SUMS",
+        "sudo python3 -I build-magicmouse-palm.py --install ./build",
+        "sudo python3 -I build-magicmouse-palm.py --uninstall",
     ):
         require(command in commands, f"Missing copy-and-paste instruction: {command}")
     require("{{" not in commands and "YOUR_" not in commands, "Unexpanded placeholder in published commands")

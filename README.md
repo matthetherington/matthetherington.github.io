@@ -17,8 +17,8 @@ or previewing. Node 18+ is used only for the theme-behaviour tests in CI.
 
 There is no custom domain, `/blog` prefix, analytics tracker or comment service.
 PWA/offline caching is disabled so it cannot serve a stale downloadable script.
-Theme libraries use Chirpy's standard external CDNs; no avatar or demo profile
-is configured. Chirpy's default CC-BY notice is suppressed for original blog
+Theme libraries use Chirpy's standard external CDNs. The sidebar headshot and
+favicons are hosted locally. Chirpy's default CC-BY notice is suppressed for original blog
 prose; the downloadable script retains its explicit GPL license.
 
 ## Publish on GitHub Pages
@@ -126,7 +126,7 @@ validate before committing the updated `Gemfile.lock`.
 
 ## The trackpad script
 
-`downloads/build-magicmouse-palm.py` is a standalone build-only script. The post
+`downloads/build-magicmouse-palm.py` is a standalone driver builder. The post
 links to this site's copy, not to a Gist that does not exist yet.
 `downloads/LICENSE` contains its GPL license.
 
@@ -139,8 +139,9 @@ sha256sum downloads/build-magicmouse-palm.py
 The post renders the checksum from that data file. CI compares it with the actual
 published download, so a stale or mistyped checksum fails the build.
 
-The post is deliberately **not** a driver installation/activation guide.
-The downloadable module-builder does not change the running kernel, driver
-bindings, firmware, Touch ID setup or boot defaults.
+The default build and `--check` leave the system unchanged. The separate
+root-only `--install BUILD_DIR` action enables a service that switches the
+internal trackpad on the matching kernel at boot. `--uninstall` removes the
+service and module; reboot to restore the stock driver.
 
 See `NOTICE.md` for the Chirpy Starter code attribution.
