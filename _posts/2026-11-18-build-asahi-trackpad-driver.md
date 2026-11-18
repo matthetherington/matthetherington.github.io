@@ -49,7 +49,7 @@ install and uninstall commands below need `sudo`.
 ## 3. Get the script
 
 [Download the build script]({{ "/downloads/build-magicmouse-palm.py" | relative_url }})
-or open that link to review it first.
+or [view source on GitHub](https://github.com/matthetherington/matthetherington.github.io/blob/master/downloads/build-magicmouse-palm.py).
 The script is self-contained: you don't need a ZIP or a cloned repository.
 
 To download it into its own working directory and check its SHA-256, copy this
