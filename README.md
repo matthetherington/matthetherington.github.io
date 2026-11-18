@@ -3,7 +3,9 @@
 A small Jekyll blog using the [Chirpy theme](https://github.com/cotes2020/jekyll-theme-chirpy),
 published at the canonical address:
 
-**https://matthetherington.github.io/**
+**https://blog.hetherington.tv/**
+
+The default GitHub Pages address, `matthetherington.github.io`, redirects here.
 
 The homepage lists posts; the sidebar includes categories, tags, archives,
 gists and an about page. Self-contained downloads live under `/downloads/`.
@@ -15,7 +17,7 @@ are respected.
 The gem supplies prebuilt theme JavaScript, so Node is not needed for building
 or previewing. Node 18+ is used only for the theme-behaviour tests in CI.
 
-There is no custom domain, `/blog` prefix, analytics tracker or comment service.
+There is no `/blog` prefix, analytics tracker or comment service.
 PWA/offline caching is disabled so it cannot serve a stale downloadable script.
 Theme libraries use Chirpy's standard external CDNs. The sidebar headshot and
 favicons are hosted locally. Chirpy's default CC-BY notice is suppressed for original blog
@@ -27,9 +29,13 @@ The site uses a custom **GitHub Actions** build so its Jekyll dependencies can b
 kept current rather than using GitHub Pages' older built-in Jekyll bundle.
 
 1. In **Settings → Pages → Build and deployment**, change **Source** to
-   **GitHub Actions**. Do not configure a custom domain.
-2. Commit and push the site changes to the existing **`master`** branch.
-3. Check the **Build and deploy blog** workflow in **Actions**.
+   **GitHub Actions**.
+2. In **Settings → Pages**, set **Custom domain** to `blog.hetherington.tv`.
+   At your DNS provider, point its CNAME record to `matthetherington.github.io`.
+   This Actions deployment does not need a `CNAME` file. Enable **Enforce HTTPS**
+   once GitHub has provisioned the certificate.
+3. Commit and push the site changes to the existing **`master`** branch.
+4. Check the **Build and deploy blog** workflow in **Actions**.
 
 Pull requests build and validate without deploying. Pushes to `master` and
 manual workflow runs on `master` deploy only after the checks pass. Editing files
@@ -79,8 +85,8 @@ bundle install
 bundle exec jekyll serve --host 127.0.0.1
 ```
 
-Visit `http://127.0.0.1:4000`. The canonical links deliberately remain the
-production GitHub Pages URL, even during local previews.
+Visit `http://127.0.0.1:4000`. The canonical links deliberately use the
+production custom domain, even during local previews.
 
 Run the same production checks used in CI:
 

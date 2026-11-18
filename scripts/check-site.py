@@ -11,7 +11,7 @@ from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-CANONICAL = "https://matthetherington.github.io"
+CANONICAL = "https://blog.hetherington.tv"
 POST = "/posts/build-asahi-trackpad-driver/"
 SCRIPT = "/downloads/build-magicmouse-palm.py"
 GISTS = "https://gist.github.com/matthetherington"
